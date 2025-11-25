@@ -11,6 +11,9 @@ export default defineConfig({
     cloudflare(),
     VitePWA({
       registerType: "autoUpdate",
+      strategies: "injectManifest",
+      srcDir: "public",
+      filename: "sw.js",
       manifest: {
         name: "Baby Log",
         short_name: "Baby Log",

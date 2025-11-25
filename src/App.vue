@@ -33,6 +33,14 @@ const NOTIFICATION_MESSAGES = [
   "Still feeding?",
 ];
 
+// For testing: use shorter timer (30 seconds) if ?test param is present
+// Remove ?test from URL to use production 5-minute timer
+const NOTIFICATION_INTERVAL_MS = new URLSearchParams(
+  window.location.search
+).has("test")
+  ? 30 * 1000 // 30 seconds for testing
+  : 5 * 60 * 1000; // 5 minutes production
+
 // Lifecycle
 onMounted(() => {
   entries.value = loadEntries();
@@ -51,6 +59,13 @@ const startFeedingSession = () => {
   activeFeedingSession.value = new Date().getTime();
   feedingData.value = { leftBreast: 0, rightBreast: 0 };
   startTimer();
+
+  // Request wake lock on PWA to prevent timer from being suspended
+  if ("wakeLock" in navigator) {
+    navigator.wakeLock.request("screen").catch((e) => {
+      console.warn("[WakeLock] Failed to acquire wake lock:", e);
+    });
+  }
 };
 
 const endFeedingSession = () => {
@@ -106,12 +121,21 @@ const sendNotification = () => {
       Math.floor(Math.random() * NOTIFICATION_MESSAGES.length)
     ];
 
+  console.log("[Notification] Sending reminder:", randomMessage);
+
   if ("Notification" in window && Notification.permission === "granted") {
-    new Notification("Baby Log", {
-      body: randomMessage,
-      tag: "baby-log-reminder",
-      requireInteraction: false,
-    });
+    try {
+      new Notification("Baby Log", {
+        body: randomMessage,
+        tag: "baby-log-reminder",
+        requireInteraction: true,
+        badge:
+          "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22><text y=%2237%22 font-size=%2240%22>🍼</text></svg>",
+      });
+      console.log("[Notification] Browser notification sent successfully");
+    } catch (e) {
+      console.error("[Notification] Failed to send browser notification:", e);
+    }
   }
 
   // Show in-app toast if tab is active
@@ -121,42 +145,52 @@ const sendNotification = () => {
   restartNotificationTimer();
 };
 
-// Restart notification timer (resets the 5-minute countdown)
+// Restart notification timer (resets the countdown)
 const restartNotificationTimer = () => {
   if (notificationInterval) clearInterval(notificationInterval);
+  const delayMs = NOTIFICATION_INTERVAL_MS;
+  const delayLabel = delayMs === 30000 ? "30 seconds (test mode)" : "5 minutes";
+
   notificationInterval = setTimeout(() => {
+    console.log("[Timer] Notification timer fired");
     if (activeLeftBreast.value || activeRightBreast.value) {
+      console.log("[Timer] Breast still active, sending notification");
       sendNotification();
+    } else {
+      console.log("[Timer] No active breast, skipping notification");
     }
-  }, 5 * 60 * 1000); // 5 minutes
+  }, delayMs);
+
+  console.log(`[Timer] Notification timer scheduled for ${delayLabel}`);
 };
 
 // Start notification timer (fires first notification after 5 minutes)
 const startNotificationTimer = () => {
+  console.log("[Timer] Starting notification timer");
   restartNotificationTimer();
 };
 
 const endBreastFeeding = (breast) => {
-   if (breast === "left" && activeLeftBreast.value) {
-     const duration = Math.floor(
-       (new Date().getTime() - activeLeftBreast.value) / 1000
-     );
-     feedingData.value.leftBreast = duration;
-     activeLeftBreast.value = null;
-     leftBreastDuration.value = 0;
-   } else if (breast === "right" && activeRightBreast.value) {
-     const duration = Math.floor(
-       (new Date().getTime() - activeRightBreast.value) / 1000
-     );
-     feedingData.value.rightBreast = duration;
-     activeRightBreast.value = null;
-     rightBreastDuration.value = 0;
-   }
+  if (breast === "left" && activeLeftBreast.value) {
+    const duration = Math.floor(
+      (new Date().getTime() - activeLeftBreast.value) / 1000
+    );
+    feedingData.value.leftBreast = duration;
+    activeLeftBreast.value = null;
+    leftBreastDuration.value = 0;
+  } else if (breast === "right" && activeRightBreast.value) {
+    const duration = Math.floor(
+      (new Date().getTime() - activeRightBreast.value) / 1000
+    );
+    feedingData.value.rightBreast = duration;
+    activeRightBreast.value = null;
+    rightBreastDuration.value = 0;
+  }
 
-   // Stop notification timer if both breasts are inactive
-   if (!activeLeftBreast.value && !activeRightBreast.value) {
-     if (notificationInterval) clearInterval(notificationInterval);
-   }
+  // Stop notification timer if both breasts are inactive
+  if (!activeLeftBreast.value && !activeRightBreast.value) {
+    if (notificationInterval) clearInterval(notificationInterval);
+  }
 };
 
 const startTimer = () => {

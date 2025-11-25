@@ -5,6 +5,7 @@
 - **Dev server**: `npm run dev` - starts Vite dev server on http://localhost:5173
 - **Build**: `npm run build` - creates optimized production build in dist/
 - **Preview**: `npm run preview` - preview production build locally
+- **Deploy**: `wrangler deploy` - deploys to Cloudflare (configured in wrangler.jsonc)
 - **No tests**: project currently has no test setup
 
 ## Architecture
@@ -13,10 +14,12 @@ Single-page Vue 3 app for tracking newborn feeding and diaper changes.
 
 - **Framework**: Vue 3 with Composition API (`<script setup>`)
 - **Styling**: Tailwind CSS v4 (via @tailwindcss/vite plugin)
-- **Build tool**: Vite
+- **Build tool**: Vite with Cloudflare and PWA plugins
 - **Storage**: Browser localStorage (key: "babyLog")
 - **Entry point**: src/main.js → mounts App.vue to #app
 - **Structure**: Single App.vue component (~570 lines) containing all UI and logic
+- **PWA**: Configured with vite-plugin-pwa for offline support and installability
+- **Deployment**: Cloudflare Pages via @cloudflare/vite-plugin and Wrangler
 
 ## Code Style & Conventions
 

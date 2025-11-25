@@ -45,9 +45,11 @@ A simple, calming web app for tracking newborn feeding and diaper changes. Perfe
 ## Technology
 
 - **Vue.js 3**: Reactive UI framework
-- **Tailwind CSS**: Utility-first styling for a calm, clean design
+- **Tailwind CSS v4**: Utility-first styling for a calm, clean design
+- **Vite**: Fast build tool and dev server
 - **LocalStorage**: Client-side data persistence
-- **Vanilla JavaScript**: No build tools required
+- **PWA Support**: Progressive Web App for offline access and installation
+- **Cloudflare**: Deployment and edge hosting
 
 ## Browser Compatibility
 
@@ -57,9 +59,13 @@ Works on any modern browser with LocalStorage support:
 - Safari (latest)
 - Mobile browsers (iOS Safari, Chrome Mobile)
 
-## No Installation Required
+## Installation & Deployment
 
-This is a completely client-side app. Just open the HTML file in your browser—no server, no installation, no internet connection required.
+For development: `npm run dev` starts a local Vite dev server at http://localhost:5173
+
+For production: `npm run build` creates an optimized build that deploys to Cloudflare via Wrangler.
+
+The app works offline thanks to PWA support and can be installed directly on your device.
 
 ## Data Privacy
 

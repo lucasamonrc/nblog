@@ -1,4 +1,6 @@
 <script setup>
+import { formatDuration } from "../utils/formatting.js";
+
 const props = defineProps({
   side: {
     type: String,
@@ -41,7 +43,7 @@ const label = props.side.charAt(0).toUpperCase() + props.side.slice(1) + " Breas
         :class="colorClass.badge"
         class="text-sm font-medium px-3 py-1 rounded"
       >
-        {{ duration }}s
+        {{ formatDuration(duration) }}
       </div>
     </div>
     <div class="flex gap-2">
@@ -63,7 +65,7 @@ const label = props.side.charAt(0).toUpperCase() + props.side.slice(1) + " Breas
       <div
         class="text-center py-3 px-4 bg-white rounded-lg border border-gray-200 font-medium text-gray-700 min-w-24"
       >
-        {{ minutes || 0 }}m
+        {{ formatDuration(minutes) }}
       </div>
     </div>
   </div>

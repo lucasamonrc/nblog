@@ -1,4 +1,6 @@
 <script setup>
+import { formatDuration } from "../utils/formatting.js";
+
 defineProps({
   modelValue: Boolean,
   feedingData: {
@@ -11,7 +13,7 @@ defineEmits(["update:modelValue", "save"]);
 
 const isOpen = defineModel("modelValue", { type: Boolean });
 
-const totalMinutes = () => {
+const totalDuration = () => {
   return (feedingData.leftBreast || 0) + (feedingData.rightBreast || 0);
 };
 </script>
@@ -24,7 +26,7 @@ const totalMinutes = () => {
       <div class="space-y-4">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2"
-            >Left Breast (minutes)</label
+            >Left Breast (seconds)</label
           >
           <input
             v-model.number="feedingData.leftBreast"
@@ -36,7 +38,7 @@ const totalMinutes = () => {
 
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2"
-            >Right Breast (minutes)</label
+            >Right Breast (seconds)</label
           >
           <input
             v-model.number="feedingData.rightBreast"
@@ -47,7 +49,7 @@ const totalMinutes = () => {
         </div>
 
         <div class="bg-blue-50 p-3 rounded-lg text-sm text-gray-700">
-          <strong>Total:</strong> {{ totalMinutes() }} minutes
+          <strong>Total:</strong> {{ formatDuration(totalDuration()) }}
         </div>
 
         <div class="flex gap-3 pt-4">

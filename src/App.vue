@@ -128,7 +128,7 @@ const restartNotificationTimer = () => {
     if (activeLeftBreast.value || activeRightBreast.value) {
       sendNotification();
     }
-  }, 5 * 1000); // 5 minutes
+  }, 5 * 60 * 1000); // 5 minutes
 };
 
 // Start notification timer (fires first notification after 5 minutes)
@@ -137,26 +137,26 @@ const startNotificationTimer = () => {
 };
 
 const endBreastFeeding = (breast) => {
-  if (breast === "left" && activeLeftBreast.value) {
-    const duration = Math.round(
-      (new Date().getTime() - activeLeftBreast.value) / 60000
-    );
-    feedingData.value.leftBreast = duration;
-    activeLeftBreast.value = null;
-    leftBreastDuration.value = 0;
-  } else if (breast === "right" && activeRightBreast.value) {
-    const duration = Math.round(
-      (new Date().getTime() - activeRightBreast.value) / 60000
-    );
-    feedingData.value.rightBreast = duration;
-    activeRightBreast.value = null;
-    rightBreastDuration.value = 0;
-  }
+   if (breast === "left" && activeLeftBreast.value) {
+     const duration = Math.floor(
+       (new Date().getTime() - activeLeftBreast.value) / 1000
+     );
+     feedingData.value.leftBreast = duration;
+     activeLeftBreast.value = null;
+     leftBreastDuration.value = 0;
+   } else if (breast === "right" && activeRightBreast.value) {
+     const duration = Math.floor(
+       (new Date().getTime() - activeRightBreast.value) / 1000
+     );
+     feedingData.value.rightBreast = duration;
+     activeRightBreast.value = null;
+     rightBreastDuration.value = 0;
+   }
 
-  // Stop notification timer if both breasts are inactive
-  if (!activeLeftBreast.value && !activeRightBreast.value) {
-    if (notificationInterval) clearInterval(notificationInterval);
-  }
+   // Stop notification timer if both breasts are inactive
+   if (!activeLeftBreast.value && !activeRightBreast.value) {
+     if (notificationInterval) clearInterval(notificationInterval);
+   }
 };
 
 const startTimer = () => {

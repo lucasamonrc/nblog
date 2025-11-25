@@ -1,5 +1,5 @@
 <script setup>
-import { formatTime } from "../utils/formatting.js";
+import { formatTime, formatDuration } from "../utils/formatting.js";
 
 defineProps({
   entries: {
@@ -26,11 +26,10 @@ defineEmits(["edit-feeding", "remove-entry"]);
             <span class="text-2xl">🍼</span>
             <div class="flex-1">
               <div class="font-medium text-gray-700">
-                {{ entry.leftBreast + entry.rightBreast }}m
+                {{ formatDuration(entry.leftBreast + entry.rightBreast) }}
               </div>
               <div class="text-xs text-gray-500">
-                {{ formatTime(entry.startTime) }} · ({{ entry.leftBreast }}l
-                + {{ entry.rightBreast }}r)
+                {{ formatTime(entry.startTime) }} · L: {{ formatDuration(entry.leftBreast) }} | R: {{ formatDuration(entry.rightBreast) }}
               </div>
             </div>
           </div>

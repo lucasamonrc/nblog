@@ -20,13 +20,31 @@ const rightBreastDuration = ref(0);
 const showEditModal = ref(false);
 const editingIndex = ref(null);
 const editingFeedingData = ref({ leftBreast: 0, rightBreast: 0 });
+const toastMessage = ref(null);
+const showToast = ref(false);
 
 let timerInterval = null;
+let notificationInterval = null;
+
+const NOTIFICATION_MESSAGES = [
+  "Are you still there?",
+  "How's it going?",
+  "Do you want to switch breasts?",
+  "Still feeding?",
+];
 
 // Lifecycle
 onMounted(() => {
   entries.value = loadEntries();
+  requestNotificationPermission();
 });
+
+// Request notification permission
+const requestNotificationPermission = () => {
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+};
 
 // Feeding Session Management
 const startFeedingSession = () => {
@@ -46,6 +64,7 @@ const endFeedingSession = () => {
   }
 
   if (timerInterval) clearInterval(timerInterval);
+  if (notificationInterval) clearInterval(notificationInterval);
 
   entries.value.push({
     type: "feeding",
@@ -68,6 +87,53 @@ const startBreastFeeding = (breast) => {
   } else {
     activeRightBreast.value = new Date().getTime();
   }
+  startNotificationTimer();
+};
+
+// Show in-app toast notification
+const showInAppToast = (message) => {
+  toastMessage.value = message;
+  showToast.value = true;
+  setTimeout(() => {
+    showToast.value = false;
+  }, 3000);
+};
+
+// Send notification reminder and restart timer
+const sendNotification = () => {
+  const randomMessage =
+    NOTIFICATION_MESSAGES[
+      Math.floor(Math.random() * NOTIFICATION_MESSAGES.length)
+    ];
+
+  if ("Notification" in window && Notification.permission === "granted") {
+    new Notification("Baby Log", {
+      body: randomMessage,
+      tag: "baby-log-reminder",
+      requireInteraction: false,
+    });
+  }
+
+  // Show in-app toast if tab is active
+  showInAppToast(randomMessage);
+
+  // Restart the 5-minute timer after notification is sent
+  restartNotificationTimer();
+};
+
+// Restart notification timer (resets the 5-minute countdown)
+const restartNotificationTimer = () => {
+  if (notificationInterval) clearInterval(notificationInterval);
+  notificationInterval = setTimeout(() => {
+    if (activeLeftBreast.value || activeRightBreast.value) {
+      sendNotification();
+    }
+  }, 5 * 1000); // 5 minutes
+};
+
+// Start notification timer (fires first notification after 5 minutes)
+const startNotificationTimer = () => {
+  restartNotificationTimer();
 };
 
 const endBreastFeeding = (breast) => {
@@ -85,6 +151,11 @@ const endBreastFeeding = (breast) => {
     feedingData.value.rightBreast = duration;
     activeRightBreast.value = null;
     rightBreastDuration.value = 0;
+  }
+
+  // Stop notification timer if both breasts are inactive
+  if (!activeLeftBreast.value && !activeRightBreast.value) {
+    if (notificationInterval) clearInterval(notificationInterval);
   }
 };
 
@@ -195,6 +266,15 @@ const peeCount = computed(() => {
 
 <template>
   <div class="min-h-screen pb-8">
+    <!-- Toast Notification -->
+    <transition name="slide-up">
+      <div
+        v-if="showToast"
+        class="fixed bottom-4 left-4 right-4 max-w-sm mx-auto bg-blue-500 text-white px-6 py-4 rounded-lg shadow-lg"
+      >
+        {{ toastMessage }}
+      </div>
+    </transition>
     <!-- Header -->
     <div
       class="bg-linear-to-r from-purple-100 to-blue-100 pt-8 pb-6 text-center soft-shadow"
@@ -361,5 +441,20 @@ input[type="text"]:focus {
   outline: none;
   border-color: #56ab91;
   box-shadow: 0 0 0 3px rgba(86, 171, 145, 0.1);
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-up-enter-from {
+  transform: translateY(100%);
+  opacity: 0;
+}
+
+.slide-up-leave-to {
+  transform: translateY(100%);
+  opacity: 0;
 }
 </style>

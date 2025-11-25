@@ -1,6 +1,13 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
+import FeedingSession from "./components/FeedingSession.vue";
+import DiaperMenu from "./components/DiaperMenu.vue";
+import StatsSection from "./components/StatsSection.vue";
+import ActivityLog from "./components/ActivityLog.vue";
+import EditFeedingModal from "./components/EditFeedingModal.vue";
+import { loadEntries, saveEntries } from "./utils/storage.js";
 
+// State
 const entries = ref([]);
 const showDiaperMenu = ref(false);
 const diaperSelection = ref({ poop: false, pee: false });
@@ -13,25 +20,15 @@ const rightBreastDuration = ref(0);
 const showEditModal = ref(false);
 const editingIndex = ref(null);
 const editingFeedingData = ref({ leftBreast: 0, rightBreast: 0 });
+
 let timerInterval = null;
 
-// Load from localStorage on mount
+// Lifecycle
 onMounted(() => {
-  const saved = localStorage.getItem("babyLog");
-  if (saved) {
-    try {
-      entries.value = JSON.parse(saved);
-    } catch (e) {
-      console.error("Failed to load entries:", e);
-    }
-  }
+  entries.value = loadEntries();
 });
 
-// Save to localStorage whenever entries change
-const saveEntries = () => {
-  localStorage.setItem("babyLog", JSON.stringify(entries.value));
-};
-
+// Feeding Session Management
 const startFeedingSession = () => {
   activeFeedingSession.value = new Date().getTime();
   feedingData.value = { leftBreast: 0, rightBreast: 0 };
@@ -41,12 +38,11 @@ const startFeedingSession = () => {
 const endFeedingSession = () => {
   if (!activeFeedingSession.value) return;
 
-  // End any active breast feeding
   if (activeLeftBreast.value) {
-    endBreastFeeding("left", true);
+    endBreastFeeding("left");
   }
   if (activeRightBreast.value) {
-    endBreastFeeding("right", true);
+    endBreastFeeding("right");
   }
 
   if (timerInterval) clearInterval(timerInterval);
@@ -58,12 +54,14 @@ const endFeedingSession = () => {
     leftBreast: feedingData.value.leftBreast,
     rightBreast: feedingData.value.rightBreast,
   });
+
   activeFeedingSession.value = null;
   activeLeftBreast.value = null;
   activeRightBreast.value = null;
-  saveEntries();
+  saveEntries(entries.value);
 };
 
+// Breast Feeding
 const startBreastFeeding = (breast) => {
   if (breast === "left") {
     activeLeftBreast.value = new Date().getTime();
@@ -72,7 +70,7 @@ const startBreastFeeding = (breast) => {
   }
 };
 
-const endBreastFeeding = (breast, skipTimer = false) => {
+const endBreastFeeding = (breast) => {
   if (breast === "left" && activeLeftBreast.value) {
     const duration = Math.round(
       (new Date().getTime() - activeLeftBreast.value) / 60000
@@ -106,15 +104,7 @@ const startTimer = () => {
   }, 100);
 };
 
-const addEntry = (type) => {
-  entries.value.push({
-    type,
-    timestamp: new Date().getTime(),
-  });
-  showDiaperMenu.value = false;
-  saveEntries();
-};
-
+// Diaper Management
 const addDiaperEntry = () => {
   if (diaperSelection.value.poop || diaperSelection.value.pee) {
     entries.value.push({
@@ -123,7 +113,7 @@ const addDiaperEntry = () => {
       pee: diaperSelection.value.pee,
       timestamp: new Date().getTime(),
     });
-    saveEntries();
+    saveEntries(entries.value);
     closeDiaperMenu();
   }
 };
@@ -133,6 +123,7 @@ const closeDiaperMenu = () => {
   diaperSelection.value = { poop: false, pee: false };
 };
 
+// Entry Editing
 const editFeedingEntry = (index) => {
   editingIndex.value = index;
   const entry = entries.value[index];
@@ -149,7 +140,7 @@ const saveEditedFeeding = () => {
       editingFeedingData.value.leftBreast || 0;
     entries.value[editingIndex.value].rightBreast =
       editingFeedingData.value.rightBreast || 0;
-    saveEntries();
+    saveEntries(entries.value);
     showEditModal.value = false;
     editingIndex.value = null;
   }
@@ -157,16 +148,17 @@ const saveEditedFeeding = () => {
 
 const removeEntry = (index) => {
   entries.value.splice(index, 1);
-  saveEntries();
+  saveEntries(entries.value);
 };
 
 const clearAll = () => {
   if (confirm("Are you sure? This will delete all entries.")) {
     entries.value = [];
-    saveEntries();
+    saveEntries(entries.value);
   }
 };
 
+// Computed Properties
 const sortedEntries = computed(() => {
   return [...entries.value].sort((a, b) => {
     const timeA = a.startTime || a.timestamp || 0;
@@ -199,30 +191,6 @@ const peeCount = computed(() => {
     (e) => e.pee === true && (e.timestamp || 0) > last24h
   ).length;
 });
-
-const getIcon = (type) => {
-  const icons = {
-    feeding: "🍼",
-    poop: "💩",
-    pee: "💧",
-  };
-  return icons[type] || "❓";
-};
-
-const formatTime = (timestamp) => {
-  const date = new Date(timestamp);
-  const dateStr = date.toLocaleDateString(undefined, {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-  const timeStr = date.toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-  return `${dateStr} ${timeStr}`;
-};
 </script>
 
 <template>
@@ -256,239 +224,42 @@ const formatTime = (timestamp) => {
       </div>
 
       <!-- Active Feeding Session -->
-      <div v-else class="calm-card p-6 soft-shadow mb-8">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-2xl font-semibold text-gray-700">
-            🍼 Feeding Session
-          </h2>
-          <button
-            @click="endFeedingSession"
-            class="bg-linear-to-r from-red-400 to-red-500 text-white font-semibold py-2 px-4 rounded-lg soft-shadow transition hover:shadow-lg"
-          >
-            End Session
-          </button>
-        </div>
+      <FeedingSession
+        v-if="activeFeedingSession"
+        :left-breast-active="!!activeLeftBreast"
+        :right-breast-active="!!activeRightBreast"
+        :left-breast-duration="leftBreastDuration"
+        :right-breast-duration="rightBreastDuration"
+        :left-breast-minutes="feedingData.leftBreast"
+        :right-breast-minutes="feedingData.rightBreast"
+        @end-session="endFeedingSession"
+        @start-breast="startBreastFeeding"
+        @end-breast="endBreastFeeding"
+      />
 
-        <!-- Left Breast -->
-        <div class="breast-section mb-4">
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-2">
-              <span class="text-2xl">👶</span>
-              <span class="font-semibold text-gray-700">Left Breast</span>
-            </div>
-            <div
-              v-if="activeLeftBreast"
-              class="text-sm font-medium text-orange-600 bg-orange-50 px-3 py-1 rounded"
-            >
-              {{ leftBreastDuration }}s
-            </div>
-          </div>
-          <div class="flex gap-2">
-            <button
-              v-if="!activeLeftBreast"
-              @click="startBreastFeeding('left')"
-              class="btn-primary text-white font-semibold py-3 px-4 rounded-lg transition flex-1"
-            >
-              Start
-            </button>
-            <button
-              v-else
-              @click="endBreastFeeding('left')"
-              class="bg-linear-to-r from-orange-400 to-orange-500 text-white font-semibold py-3 px-4 rounded-lg transition flex-1"
-            >
-              End
-            </button>
-            <div
-              class="text-center py-3 px-4 bg-white rounded-lg border border-gray-200 font-medium text-gray-700 min-w-24"
-            >
-              {{ feedingData.leftBreast || 0 }}m
-            </div>
-          </div>
-        </div>
-
-        <!-- Right Breast -->
-        <div class="breast-section">
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-2">
-              <span class="text-2xl">👶</span>
-              <span class="font-semibold text-gray-700">Right Breast</span>
-            </div>
-            <div
-              v-if="activeRightBreast"
-              class="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded"
-            >
-              {{ rightBreastDuration }}s
-            </div>
-          </div>
-          <div class="flex gap-2">
-            <button
-              v-if="!activeRightBreast"
-              @click="startBreastFeeding('right')"
-              class="btn-primary text-white font-semibold py-3 px-4 rounded-lg transition flex-1"
-            >
-              Start
-            </button>
-            <button
-              v-else
-              @click="endBreastFeeding('right')"
-              class="bg-linear-to-r from-blue-400 to-blue-500 text-white font-semibold py-3 px-4 rounded-lg transition flex-1"
-            >
-              End
-            </button>
-            <div
-              class="text-center py-3 px-4 bg-white rounded-lg border border-gray-200 font-medium text-gray-700 min-w-24"
-            >
-              {{ feedingData.rightBreast || 0 }}m
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Diaper Type Menu -->
-      <div v-if="showDiaperMenu" class="calm-card p-6 mb-8 soft-shadow">
-        <h3 class="text-gray-700 font-semibold mb-4">What type?</h3>
-        <div class="space-y-3">
-          <button
-            @click="diaperSelection.poop = !diaperSelection.poop"
-            :class="
-              diaperSelection.poop
-                ? 'bg-yellow-200'
-                : 'bg-yellow-100 hover:bg-yellow-200'
-            "
-            class="w-full text-gray-700 font-medium py-3 rounded-lg transition"
-          >
-            💩 Poop {{ diaperSelection.poop ? "✓" : "" }}
-          </button>
-          <button
-            @click="diaperSelection.pee = !diaperSelection.pee"
-            :class="
-              diaperSelection.pee
-                ? 'bg-blue-200'
-                : 'bg-blue-100 hover:bg-blue-200'
-            "
-            class="w-full text-gray-700 font-medium py-3 rounded-lg transition"
-          >
-            💧 Pee {{ diaperSelection.pee ? "✓" : "" }}
-          </button>
-          <div class="flex gap-2">
-            <button
-              @click="addDiaperEntry"
-              :disabled="!diaperSelection.poop && !diaperSelection.pee"
-              :class="
-                diaperSelection.poop || diaperSelection.pee
-                  ? 'btn-primary'
-                  : 'bg-gray-300'
-              "
-              class="flex-1 text-white font-medium py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Save
-            </button>
-            <button
-              @click="closeDiaperMenu"
-              class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 rounded-lg transition"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
+      <!-- Diaper Menu -->
+      <DiaperMenu
+        v-if="showDiaperMenu"
+        v-model="diaperSelection"
+        @save="addDiaperEntry"
+        @cancel="closeDiaperMenu"
+      />
 
       <!-- Stats Section -->
-      <div v-if="entries.length > 0" class="mb-8">
-        <div class="text-xs text-gray-500 mb-3 uppercase tracking-wide">
-          Last 24 hours
-        </div>
-        <div class="grid grid-cols-3 gap-3">
-          <div class="calm-card p-4 text-center soft-shadow">
-            <div class="text-2xl font-light text-green-600 mb-1">
-              {{ feedingCount }}
-            </div>
-            <div class="text-xs text-gray-600">Feedings</div>
-          </div>
-          <div class="calm-card p-4 text-center soft-shadow">
-            <div class="text-2xl font-light text-yellow-600 mb-1">
-              {{ poopCount }}
-            </div>
-            <div class="text-xs text-gray-600">Poops</div>
-          </div>
-          <div class="calm-card p-4 text-center soft-shadow">
-            <div class="text-2xl font-light text-blue-600 mb-1">
-              {{ peeCount }}
-            </div>
-            <div class="text-xs text-gray-600">Pees</div>
-          </div>
-        </div>
-      </div>
+      <StatsSection
+        v-if="entries.length > 0"
+        :feeding-count="feedingCount"
+        :poop-count="poopCount"
+        :pee-count="peeCount"
+      />
 
-      <!-- Log History -->
-      <div v-if="entries.length > 0" class="calm-card p-6 soft-shadow">
-        <h2 class="text-xl font-semibold text-gray-700 mb-4">
-          Recent Activity
-        </h2>
-        <div class="space-y-3 max-h-96 overflow-y-auto">
-          <div
-            v-for="(entry, index) in sortedEntries"
-            :key="index"
-            class="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition group cursor-pointer"
-            @click="entry.type === 'feeding' ? editFeedingEntry(index) : null"
-          >
-            <div
-              v-if="entry.type === 'feeding'"
-              class="flex items-center justify-between"
-            >
-              <div class="flex items-center gap-3 flex-1">
-                <span class="text-2xl">🍼</span>
-                <div class="flex-1">
-                  <div class="font-medium text-gray-700">
-                    {{ entry.leftBreast + entry.rightBreast }}m
-                  </div>
-                  <div class="text-xs text-gray-500">
-                    {{ formatTime(entry.startTime) }} · ({{ entry.leftBreast }}l
-                    + {{ entry.rightBreast }}r)
-                  </div>
-                </div>
-              </div>
-              <button
-                @click.stop="removeEntry(index)"
-                class="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"
-                title="Delete entry"
-              >
-                ✕
-              </button>
-            </div>
-            <div v-else class="flex items-center justify-between">
-              <div class="flex items-center gap-3 flex-1">
-                <span class="text-2xl">
-                  {{
-                    entry.poop && entry.pee ? "💩💧" : entry.poop ? "💩" : "💧"
-                  }}
-                </span>
-                <div class="flex-1">
-                  <div class="font-medium text-gray-700">
-                    {{
-                      entry.poop && entry.pee
-                        ? "Poop & Pee"
-                        : entry.poop
-                        ? "Poop"
-                        : "Pee"
-                    }}
-                  </div>
-                  <div class="text-sm text-gray-500">
-                    {{ formatTime(entry.timestamp) }}
-                  </div>
-                </div>
-              </div>
-              <button
-                @click.stop="removeEntry(index)"
-                class="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"
-                title="Delete entry"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- Activity Log -->
+      <ActivityLog
+        v-if="entries.length > 0"
+        :entries="sortedEntries"
+        @edit-feeding="editFeedingEntry"
+        @remove-entry="removeEntry"
+      />
 
       <!-- Empty State -->
       <div v-else class="calm-card p-12 text-center soft-shadow">
@@ -508,65 +279,11 @@ const formatTime = (timestamp) => {
     </div>
 
     <!-- Edit Feeding Modal -->
-    <div
-      v-if="showEditModal"
-      class="modal-overlay"
-      @click="showEditModal = false"
-    >
-      <div class="modal-content" @click.stop>
-        <h2 class="text-2xl font-semibold text-gray-700 mb-6">Edit Feeding</h2>
-
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2"
-              >Left Breast (minutes)</label
-            >
-            <input
-              v-model.number="editingFeedingData.leftBreast"
-              type="number"
-              min="0"
-              placeholder="0"
-            />
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2"
-              >Right Breast (minutes)</label
-            >
-            <input
-              v-model.number="editingFeedingData.rightBreast"
-              type="number"
-              min="0"
-              placeholder="0"
-            />
-          </div>
-
-          <div class="bg-blue-50 p-3 rounded-lg text-sm text-gray-700">
-            <strong>Total:</strong>
-            {{
-              (editingFeedingData.leftBreast || 0) +
-              (editingFeedingData.rightBreast || 0)
-            }}
-            minutes
-          </div>
-
-          <div class="flex gap-3 pt-4">
-            <button
-              @click="saveEditedFeeding"
-              class="btn-primary text-white font-semibold py-2 px-4 rounded-lg flex-1 transition"
-            >
-              Save
-            </button>
-            <button
-              @click="showEditModal = false"
-              class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg flex-1 transition"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <EditFeedingModal
+      v-model="showEditModal"
+      :feeding-data="editingFeedingData"
+      @save="saveEditedFeeding"
+    />
   </div>
 </template>
 
@@ -607,20 +324,6 @@ body {
   box-shadow: 0 8px 12px rgba(255, 170, 100, 0.3);
 }
 
-.time-badge {
-  background: linear-gradient(135deg, #e8f4f8 0%, #f0e8ff 100%);
-  border: 1px solid rgba(150, 150, 200, 0.3);
-}
-
-.fade-enter-active {
-  transition: all 0.3s ease;
-}
-
-.fade-enter-from {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -658,16 +361,5 @@ input[type="text"]:focus {
   outline: none;
   border-color: #56ab91;
   box-shadow: 0 0 0 3px rgba(86, 171, 145, 0.1);
-}
-
-.breast-button-active {
-  background: linear-gradient(135deg, #ffd3b6 0%, #ffaa64 100%);
-}
-
-.breast-section {
-  padding: 16px;
-  border-radius: 12px;
-  background: #f9f7ff;
-  border: 1px solid rgba(200, 220, 230, 0.5);
 }
 </style>

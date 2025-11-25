@@ -337,6 +337,7 @@ const peeCount = computed(() => {
       <ActivityLog
         v-if="entries.length > 0"
         :entries="sortedEntries"
+        :original-entries="entries"
         @edit-feeding="editFeedingEntry"
         @remove-entry="removeEntry"
       />

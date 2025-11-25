@@ -1,14 +1,24 @@
 <script setup>
 import { formatTime, formatDuration } from "../utils/formatting.js";
 
-defineProps({
+const props = defineProps({
   entries: {
+    type: Array,
+    required: true,
+  },
+  originalEntries: {
     type: Array,
     required: true,
   },
 });
 
-defineEmits(["edit-feeding", "remove-entry"]);
+const emit = defineEmits(["edit-feeding", "remove-entry"]);
+
+const getOriginalIndex = (entry) => {
+  return props.originalEntries.findIndex(
+    (e) => e === entry || (e.startTime === entry.startTime && e.type === entry.type)
+  );
+};
 </script>
 
 <template>
@@ -16,11 +26,11 @@ defineEmits(["edit-feeding", "remove-entry"]);
     <h2 class="text-xl font-semibold text-gray-700 mb-4">Recent Activity</h2>
     <div class="space-y-3 max-h-96 overflow-y-auto">
       <div
-        v-for="(entry, index) in entries"
-        :key="index"
-        class="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition group cursor-pointer"
-        @click="entry.type === 'feeding' ? $emit('edit-feeding', index) : null"
-      >
+         v-for="(entry, index) in entries"
+         :key="index"
+         class="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition group cursor-pointer"
+         @click="entry.type === 'feeding' ? emit('edit-feeding', getOriginalIndex(entry)) : null"
+       >
         <div v-if="entry.type === 'feeding'" class="flex items-center justify-between">
           <div class="flex items-center gap-3 flex-1">
             <span class="text-2xl">🍼</span>
@@ -34,12 +44,12 @@ defineEmits(["edit-feeding", "remove-entry"]);
             </div>
           </div>
           <button
-            @click.stop="$emit('remove-entry', index)"
-            class="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"
-            title="Delete entry"
-          >
-            ✕
-          </button>
+             @click.stop="emit('remove-entry', getOriginalIndex(entry))"
+             class="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"
+             title="Delete entry"
+           >
+             ✕
+           </button>
         </div>
         <div v-else class="flex items-center justify-between">
           <div class="flex items-center gap-3 flex-1">
@@ -68,14 +78,14 @@ defineEmits(["edit-feeding", "remove-entry"]);
             </div>
           </div>
           <button
-            @click.stop="$emit('remove-entry', index)"
-            class="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"
-            title="Delete entry"
-          >
-            ✕
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
+             @click.stop="emit('remove-entry', getOriginalIndex(entry))"
+             class="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"
+             title="Delete entry"
+           >
+             ✕
+           </button>
+          </div>
+          </div>
+          </div>
+          </div>
+          </template>

@@ -1,7 +1,7 @@
 <script setup>
 import { formatDuration } from "../utils/formatting.js";
 
-defineProps({
+const props = defineProps({
   modelValue: Boolean,
   feedingData: {
     type: Object,
@@ -14,7 +14,7 @@ defineEmits(["update:modelValue", "save"]);
 const isOpen = defineModel("modelValue", { type: Boolean });
 
 const totalDuration = () => {
-  return (feedingData.leftBreast || 0) + (feedingData.rightBreast || 0);
+  return (props.feedingData.leftBreast || 0) + (props.feedingData.rightBreast || 0);
 };
 </script>
 
